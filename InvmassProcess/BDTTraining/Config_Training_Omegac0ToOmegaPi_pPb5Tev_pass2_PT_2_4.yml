@@ -1,0 +1,183 @@
+input: # files to use, set FD to null for binary classification
+    prompt: /home/enrich/pT_6_12/Prompt_filter_pT_6_12.parquet.gzip
+      #prompt: /Users/zhujh/alidock/Omegac/pPb_Analysis/ML_XGBoost/_1_filterdata/pT_6_12/FD_filter_pT_6_12.parquet.gzip
+    FD: null
+    data: /home/enrich/pT_6_12/Data_filter_pT_6_12.parquet.gzip
+      #data: /Users/zhujh/alidock/Omegac/pPb_Analysis/ML_XGBoost/_1_filterdata/pT_6_12/Data_filter_pT_6_12_reduced5.parquet.gzip
+    treename: null
+
+output:
+    leg_labels: # legend labels, keep the right number of classes
+        Bkg: Background
+        Prompt: Prompt $\rm \Omega_c^0$
+        FD: null
+    out_labels: # output labels, keep the right number of classes
+        Bkg: Bkg
+        Prompt: Prompt
+        FD: null
+    dir: trained_models # output dir
+
+pt_ranges: # ranges in pt to split the data in the ml training and testing
+    min: [6] # list
+    max: [12] # list
+
+data_prep:
+    #filt_bkg_mass: mass_XicPlus < 2.1679 or mass_XicPlus > 2.7679 # pandas query to select bkg candidates
+    filt_bkg_mass: mass_Omegac0 < 2.615 or mass_Omegac0 > 2.775
+    dataset_opt:
+        'max_signal' # change how the dataset is built, options available: 'equal', 'max_signal'
+        # 'equal' -> same number of prompt/FD/bkg (not using all the signal available)
+        # 'max_signal' -> try to use all the signal (prompt and FD) + add n_bkg = bkg_mult * (n_prompt + n_FD)
+    bkg_mult: [3.] # list of multipliers for (nPrompt + nFD) used to determine nCandBkg in the 'max_signal' option
+    seed_split: 42 # 随机数的种子，控制随机状态
+    test_fraction: 1.0 # fraction of data used for test set and efficiencies --> set to 1. if you want to apply the model to the full dataframes
+      #test_fraction: 1. # !!! FD efficiency
+
+ml:
+    raw_output: False # use raw_output (True) or probability (False) as output of the model
+    roc_auc_average: "macro" # 'macro' or 'weighted'
+    roc_auc_approach: "ovo" # 'ovo' or 'ovr'
+    training_columns:
+        [
+            #pt_PiFromOmegac0,
+            # === Omegac0 ===
+            #DecayLxy_Omegac0,
+            chi2geo_Omegac0,
+            DCA_Omegac0Dau_KF, #
+            chi2topo_Omegac0ToPV,
+            #ldl_Omegac0,
+            #ct_Omegac0,
+            # === pion (from Omegac0) ===
+            chi2prim_PiFromOmegac0,
+            DCAxy_PiFromOmegac0_KF,
+            # === Omega ===
+            DCA_OmegaDau,
+            #chi2geo_Omega,
+            ldl_Omega,
+            chi2topo_OmegaToPV,
+            #DecayLxy_Omega,
+            #PA_OmegaToOmegac0,
+            PA_OmegaToPV,
+            mass_Omega, #
+            chi2topo_OmegaToOmegac0,
+            #DCAxy_OmegaToPV_KF,
+            # === Omega daughters ===
+            #chi2geo_Lam,
+            ldl_Lam, #
+            chi2topo_LamToPV, #
+            #DecayLxy_Lam,
+            #PA_LamToOmega,
+            PA_LamToPV, #
+            #chi2topo_LamToOmega,
+            #DCA_LamDau,
+            #mass_Lam,
+            # === Competing rejection ===
+            #mass_Xi,
+            #mass_K0S,
+            #mass_Gamma,
+            # === PID ===
+            #nSigmaTPC_PiFromOmegac0,
+            #nSigmaTOF_PiFromOmegac0,
+            #nSigmaTPC_KaFromOmega,
+            #nSigmaTOF_KaFromOmega,
+            #nSigmaTPC_PiFromLam,
+            #nSigmaTOF_PiFromLam,
+            #nSigmaTPC_PrFromLam
+            #nSigmaTOF_PrFromLam
+        ]
+        # list of training variables
+
+    hyper_par:
+        [
+          #{"max_depth": 3, "learning_rate": 0.09717501305593566, "n_estimators": 736,}
+          #{"max_depth": 2, "learning_rate": 0.07, "n_estimators": 773,}
+        #{'max_depth': 3, 'learning_rate': 0.0935843232842027, 'n_estimators': 914}
+        #for2_4
+          #{'max_depth': 3, 'learning_rate': 0.06774000001861033, 'n_estimators': 974}
+          #for4_6
+          {'max_depth': 3, 'learning_rate': 0.08411765862838298, 'n_estimators': 710}
+          #for6_12
+        ]
+        # list of dicts of hyperparameters (one for each pT bin)
+
+    hyper_par_opt:
+        do_hyp_opt: False # whether to do the parameter optimization
+        njobs: -1 # number of parallel jobs used in hyper-parameter optimization, -1. to use all
+        nfolds: 5 # number of folds used in cross validation
+        initpoints: 5 # steps of random exploration you want to perform
+        niter: 5 # steps for bayesian optimization
+        bayes_opt_config:
+            {
+                "max_depth": !!python/tuple [1, 3],
+                "learning_rate": !!python/tuple [0.01, 0.1],
+                "n_estimators": !!python/tuple [150, 1000],
+            }
+            # configuration dictionary for optimize_params_bayes()
+
+    saved_models:
+        [
+          /home/enrich/pT_6_12/trained_models/ModelHandler_pT_6_12.pickle 
+        ]
+        # list of saved ModelHandler (path+file), compatible with the pt bins
+
+plots:
+    plotting_columns:
+        [
+            mass_Omegac0,
+            pt_Omegac0,
+            pt_PiFromOmegac0,
+            # === Omegac0 ===
+            #DecayLxy_Omegac0,
+            chi2geo_Omegac0,
+            DCA_Omegac0Dau_KF, #
+            chi2topo_Omegac0ToPV,
+            #ldl_Omegac0,
+            #ct_Omegac0,
+            # === pion (from Omegac0) ===
+            chi2prim_PiFromOmegac0,
+            DCAxy_PiFromOmegac0_KF,
+            # === Omega ===
+            DCA_OmegaDau,
+            #chi2geo_Omega,
+            ldl_Omega,
+            chi2topo_OmegaToPV,
+            #DecayLxy_Omega,
+            #PA_OmegaToOmegac0,
+            PA_OmegaToPV,
+            mass_Omega, #
+            chi2topo_OmegaToOmegac0,
+            #DCAxy_OmegaToPV_KF,
+            # === Omega daughters ===
+            #chi2geo_Lam,
+            ldl_Lam, #
+            chi2topo_LamToPV, #
+            #DecayLxy_Lam,
+            #PA_LamToOmega,
+            PA_LamToPV, #
+            #chi2topo_LamToOmega,
+            #DCA_LamDau,
+            #mass_Lam,
+            # === Competing rejection ===
+            #mass_Xi,
+            #mass_K0S,
+            #mass_Gamma,
+            # === PID ===
+            #nSigmaTPC_PiFromOmegac0,
+            #nSigmaTOF_PiFromOmegac0,
+            #nSigmaTPC_KaFromOmega,
+            #nSigmaTOF_KaFromOmega,
+            #nSigmaTPC_PiFromLam,
+            #nSigmaTOF_PiFromLam,
+            #nSigmaTPC_PrFromLam
+            #nSigmaTOF_PrFromLam
+        ]
+        # list of variables to plot
+    train_test_log: True # use log scale for plots of train and test distributions
+
+appl:
+    column_to_save_list: ['mass_Omegac0', 'pt_Omegac0', 'pt_PiFromOmegac0'] # list of variables saved in the dataframes with the applied models
+
+standalone_appl:
+    inputs: [] # list of parquet files for the model application
+    output_names: [] # names for the outputs (one for each file)
+    output_dir: null # output directory
